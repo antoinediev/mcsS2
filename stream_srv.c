@@ -1,8 +1,11 @@
 #include "stream.h"
 
+/** Prototypes **/ 
 int createSocketEcoute(char*,int);
 void dialogueAvecClient(int);
 int acceptConnect(int);
+
+/* MAIN */
 int main(){
     int sockEcoute, sockDialogue;
     pid_t pidClient;
@@ -27,19 +30,33 @@ int main(){
         //fermeture socket dialogue
         close(sockDialogue);
     }
-    
+    //fermeture socket d'écoute
     close(sockEcoute);
     return 0;
 }
 
+/** 
+ * str2req
+ * Deserialization d'une chaine de caractère 
+ */
 void str2req(buffer_t b, requete* req){
     sscanf(b,"%u##%s",&req->code,req->msg);
 }
 
+/** 
+ * rep2str
+ * Serialisation d'une requete 
+ */
 void rep2str(reponse rep,buffer_t b){
     memset(b,0,MAX_BUFFER);
     sprintf(b,"%d##%s",rep.code,rep.msg);
 }
+
+/**
+ * createSocketEcoute
+ * Créé une socket d'ecoute sur l'ip et le port donnée en paramêtre 
+ * 
+ */
 
 int createSocketEcoute(char *ipSvc, int portSvc){
     struct sockaddr_in server;
@@ -63,7 +80,11 @@ int createSocketEcoute(char *ipSvc, int portSvc){
     CHECK(listen(sock, MAX_CLTS),"Listen\t\t[FAILED]");
     return sock;
 }
-
+/**
+ * lireRequete
+ * deserialise une requete et affiche son code ainsi que son message
+ * 
+ */
 void lireRequete(int sockDialogue, requete *req){
     buffer_t b;
     int nbCarLus;
@@ -75,6 +96,11 @@ void lireRequete(int sockDialogue, requete *req){
     printf("\tcode:#%u#, msg=#%s#\n", req->code,req->msg);
 }
 
+/**
+ * traiterRequete200
+ * fonction specifique pour les requetes avec code 200
+ * 
+ */
 void traiterRequete200(requete req, reponse *rep){
     int i,len;
     len=strlen(req.msg)-1;
@@ -84,6 +110,11 @@ void traiterRequete200(requete req, reponse *rep){
     rep->code = req.code+len;
 }
 
+/**
+ * traiterRequete
+ * traite les requetes autre que 200
+ * 
+ */
 void traiterRequete(requete req, reponse *rep){
     int i,len;
     
@@ -99,7 +130,11 @@ void traiterRequete(requete req, reponse *rep){
     rep->code = req.code+strlen(rep->msg);
 }
 
-
+/**
+ * ecrireReponse
+ * Serialize la reponse et envoie la reponse via la socket de dialogue
+ * 
+ */
 void ecrireReponse(int sockDialogue, reponse rep){
     buffer_t b;
     int nbCarLus;
@@ -110,6 +145,11 @@ void ecrireReponse(int sockDialogue, reponse rep){
     printf("\tcode=#%u#, message=#%s\n",rep.code,rep.msg);
 }
 
+/**
+ * dialogueAvecClient
+ * procedure de dialogue avec le client : reçois la requete, l'a traite et envoie la reponse
+ * 
+ */
 void dialogueAvecClient(int sockDialogue){
     buffer_t b;
     requete req;
@@ -121,11 +161,14 @@ void dialogueAvecClient(int sockDialogue){
         lireRequete(sockDialogue, &req);
         if(req.code==0) break;
         traiterRequete(req,&rep);
-        ecrireReponse(sockDialogue,rep);
-        
+        ecrireReponse(sockDialogue,rep);  
     }
 }
-
+/**
+ * acceptConnect
+ * Créer une socket de dialogue 
+ * 
+ */
 int acceptConnect(int sockEcoute){
     int sock,len;
     struct sockaddr_in clt,server;

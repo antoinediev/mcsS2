@@ -1,60 +1,91 @@
 #include "stream.h"
 
+/** Prototypes **/ 
 int connectServer(char*,char*);
 void dialogueAvecServ(int );
 void str2rep(buffer_t, reponse*);
 
+/* MAIN */
 int main(int c, char**v){
     int sockAppel;
+    //verification des parametres
     if(c<3){
         printf ("usage : %s <adrIP> <port> \n",v[0]);
 		exit(-1);
     }
+    //ouverture de la socket
     sockAppel = connectServer(v[1],v[2]);
+    //dialogue avec le serveur via la socket 
     dialogueAvecServ(sockAppel);
+    //fermeture de la socket
     close(sockAppel);
     return 0;
 }
-
+/**
+ * str2rep
+ * Deserialisation de la chaine de caractère
+ * 
+ */
 void str2rep(buffer_t b, reponse* rep){
-    sscanf(b,"%u##%s",&rep->code,rep->msg);
+    //prend en compte les espaces dans la chaine de caractere de reponse
+    sscanf(b,"%u##%[^\t\n]",&rep->code,rep->msg);
 }
 
+/**
+ * req2str
+ * serialisation de la reponse
+ * 
+ */
 void req2str(requete req,buffer_t b){
     memset(b,0,MAX_BUFFER);
     sprintf(b,"%d##%s",req.code,req.msg);
 }
 
-
+/**
+ * dialogueAvecServ
+ * Dialogue avec le serveur après avoir recuperé le code et le message
+ * 
+ */
 void dialogueAvecServ(int sockDialogue){
     buffer_t b;
     requete req;
     reponse rep;
     int i =0, len;
     int nbCarLus;
-
     while(1){
-        memset(req.msg,0,MAX_BUFFER);
+        memset(req.msg,0,MAX_MSG);
         printf(" Code requete (0 pour finir dialogue) :\n");
+        //recupere le code
         scanf("%u",&req.code);
-        if(rep.code==200){
+        if(req.code==200){
+            //recupere le message si code egal à 200
             printf(" Message requete :\n");
             scanf("%s",req.msg);
-        } 
+        } else {
+            sprintf(req.msg,"");
+        }
+        //Serialisation de la requete 
         req2str(req,b);
+        //envoie de la requete
         CHECK(write(sockDialogue,b,strlen(b)+1),"Problème envoie requete");
         printf("\tmessage requete (lg=%4lu) : #%s# envoyé \n",strlen(b),b);
         memset(b,0,MAX_BUFFER);
-        if(rep.code==0) break;
+        // Code zero pour arreter le dialogue
+        if(req.code==0) break;
+        //recuperation de la reponse
         CHECK(nbCarLus = read(sockDialogue,b,MAX_BUFFER),"Problème lecture reponse");
+        //desarialisation de la reponse
         str2rep(b,&rep);
+        //affichage de la reponse
         printf("\tmessage de la reponse (lg=%4lu): #%s# reçu\n",strlen(b),b);
         printf("\tcode=#%u#, msg=#%s#\n",rep.code,rep.msg);
-    }
-    
-    
+    }  
 }
-
+/**
+ * connectServer
+ * Connection au serveur via les paramêtre passé a la commande
+ *
+ */
 int connectServer(char *hostAddr, char *portNum){
     struct hostent *host;
     buffer_t msgUsage;
